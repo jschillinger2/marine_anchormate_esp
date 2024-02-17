@@ -10,21 +10,24 @@
 #include "sensesp_app.h"
 #include "sensesp_app_builder.h"
 #include "sensesp/sensors/digital_input.h"
+#include "sensesp/sensors/digital_output.h"
 #include "sensesp/signalk/signalk_output.h"
+#include "sensesp/signalk/signalk_listener.h"
 #include "sensesp/system/lambda_consumer.h"
 #include "sensesp/transforms/debounce.h"
 #include "sensesp/transforms/integrator.h"
+#include "sensesp/signalk/signalk_value_listener.h"
+#include "sensesp/transforms/threshold.h"
 
 using namespace sensesp;
 
 ReactESP app;
 
 void setupRotationSensor();
-void setupRotationSensor2();
+void setupRelayOutputs();
 
 const String WIFI_SSID = "Huette";
 const String WIFI_PASSWORD = "xx";
-
 const String SIGNALK_HOSTNAME = "AnchorMate";
 
 void setup()
@@ -52,11 +55,44 @@ void setup()
   // set up sensors
   setupRotationSensor();
 
+  setupRelayOutputs();
+
   // Configuration is done, lets start the readings of the sensors!
   sensesp_app->start();
 }
 
-// setup seaock open digital sensor
+class SKPathHandler : public ValueConsumer<String>
+{
+public:
+  void set_input(String value, uint8_t input_channel = 0) override
+  {
+    if (value == "UP")
+    {
+      std::cout << "UP" << std::endl;
+      // DigitalOutput::setPin(PIN_5, HIGH); // Turn on pin 5
+    }
+    else
+    {
+      std::cout << "OFF" << std::endl;
+      // DigitalOutput::setPin(PIN_5, LOW); // Turn off pin 5
+    }
+  }
+};
+
+void setupRelayOutputs()
+{
+  const char *sk_path = "vessels.self.anchor.control";
+
+  const int PIN_5 = 5; // Define pin 5 as a constant
+
+  auto *listener = new StringSKListener(sk_path);
+
+  auto *pathHandler = new SKPathHandler();
+
+  // Connect the listener to your custom handler
+  listener->connect_to(pathHandler);
+}
+
 void setupRotationSensor()
 {
 
@@ -68,7 +104,7 @@ void setupRotationSensor()
   SKOutputInt *skRotationsOut = new SKOutputInt(
       "sensors.windlass.rotations",  // Signal K path
       "/sensors/windlass/rotations", // configuration path
-      new SKMetadata("",            // No units for boolean values
+      new SKMetadata("",             // No units for boolean values
                      "Rotation Count"));
 
   // Define a new RepeatSensor that reads the pin every 20 ms. Whenever
@@ -101,8 +137,6 @@ void setupRotationSensor()
           (*skRotationsOut).set_input(*x);
         }
         // std::cout << "in func 4" << std::endl;
-
-        
 
         *prevState = *newState;
 
