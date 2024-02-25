@@ -2,6 +2,8 @@
 
 ## Overview
 The Marine Anchormate Controller is an experimental project designed to interface with Signal K, controlling a FireBeetle board to operate relays for an anchor windlass system. Additionally, it captures rotation counts from a windlass rotation sensor (e.g., a reed switch) and pushes this data back to Signal K. This project aims to provide a bridge between marine data networks and physical anchor control systems, enhancing automation and monitoring capabilities.
+<br>
+This is the hardware unit to work with the project <a href="https://github.com/jschillinger2/marine_anchormate">here</a> 
 
 ## Features
 - **Signal K Listener**: Integrates with the Signal K network to receive commands and data.
