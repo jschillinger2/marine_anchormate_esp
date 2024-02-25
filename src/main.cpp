@@ -6,6 +6,7 @@
 #include "sensesp/signalk/signalk_output.h"
 #include "sensesp/transforms/linear.h"
 #include "sensesp_app_builder.h"
+#include "Arduino.h"
 
 #include "sensesp_app.h"
 #include "sensesp_app_builder.h"
@@ -23,10 +24,16 @@ using namespace sensesp;
 
 ReactESP app;
 
+#define PIN_UP 13
+#define PIN_DOWN 14
+#define PIN_PULSE 17
+#define PIN_PULSE_FREQUENCY 20
+
+
 void setupRotationSensor();
 void setupRelayOutputs();
 
-const String WIFI_SSID = "Huette";
+const String WIFI_SSID = "SchNetAll";
 const String WIFI_PASSWORD = "xx";
 const String SIGNALK_HOSTNAME = "AnchorMate";
 
@@ -54,7 +61,6 @@ void setup()
 
   // set up sensors
   setupRotationSensor();
-
   setupRelayOutputs();
 
   // Configuration is done, lets start the readings of the sensors!
@@ -66,15 +72,26 @@ class SKPathHandler : public ValueConsumer<String>
 public:
   void set_input(String value, uint8_t input_channel = 0) override
   {
+    pinMode(PIN_UP, OUTPUT);
+    pinMode(PIN_DOWN, OUTPUT);
+
     if (value == "UP")
     {
       std::cout << "UP" << std::endl;
-      // DigitalOutput::setPin(PIN_5, HIGH); // Turn on pin 5
+      digitalWrite(PIN_UP, HIGH);
+      digitalWrite(PIN_DOWN, LOW);
+    }
+    else if (value == "DOWN")
+    {
+      std::cout << "DOWN" << std::endl;
+      digitalWrite(PIN_UP, LOW);
+      digitalWrite(PIN_DOWN, HIGH);
     }
     else
     {
       std::cout << "OFF" << std::endl;
-      // DigitalOutput::setPin(PIN_5, LOW); // Turn off pin 5
+      digitalWrite(PIN_UP, LOW);
+      digitalWrite(PIN_DOWN, LOW);
     }
   }
 };
@@ -82,22 +99,16 @@ public:
 void setupRelayOutputs()
 {
   const char *sk_path = "vessels.self.anchor.control";
-
-  const int PIN_5 = 5; // Define pin 5 as a constant
-
   auto *listener = new StringSKListener(sk_path);
-
   auto *pathHandler = new SKPathHandler();
-
-  // Connect the listener to your custom handler
   listener->connect_to(pathHandler);
 }
 
 void setupRotationSensor()
 {
 
-  const uint8_t kDigitalInput2Pin = 17;
-  const unsigned int kDigitalInput2Interval = 20;
+  const uint8_t kDigitalInput2Pin = PIN_PULSE;
+  const unsigned int kDigitalInput2Interval = PIN_PULSE_FREQUENCY;
 
   pinMode(kDigitalInput2Pin, INPUT_PULLUP);
 
@@ -107,53 +118,24 @@ void setupRotationSensor()
       new SKMetadata("",             // No units for boolean values
                      "Rotation Count"));
 
-  // Define a new RepeatSensor that reads the pin every 20 ms. Whenever
-  // pin changes from false to true count the rotations
-
-  std::cout << "pre func" << std::endl;
-
   int *x = new int(0);
   (*skRotationsOut).set_input(*x);
-  // bool *prevState = int(0);
   int *prevState = new int(0);
-
-  std::cout << "pre func2" << std::endl;
 
   auto *digital_input2 = new RepeatSensor<int>(
       kDigitalInput2Interval,
       [kDigitalInput2Pin, x, prevState, skRotationsOut]() mutable
       {
-        // std::cout << "in func 1" << std::endl;
-
         int *newState = new int(0);
-        // std::cout << "in func 2" << std::endl;
-
         (*newState) = digitalRead(kDigitalInput2Pin);
-        // std::cout << "in func 3" << std::endl;
-
         if ((*prevState) != (*newState) && *newState == 1)
         {
           (*x)++;
           (*skRotationsOut).set_input(*x);
         }
-        // std::cout << "in func 4" << std::endl;
-
         *prevState = *newState;
-
-        // std::cout << "in func 5" << std::endl;
-
         return *x;
       });
-
-  std::cout << "post func" << std::endl;
-
-  // Connect digital input to Signal K output.
-  /*digital_input2->connect_to(new SKOutputInt(
-      "sensors.windlass.rotation",     // Signal K path
-      "/sensors/windlass/rotation",    // configuration path
-      new SKMetadata("",               // No units for boolean values
-                     "Rotation Count") // Value description
-      )); */
 }
 
 // main program loop
