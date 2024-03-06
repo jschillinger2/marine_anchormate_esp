@@ -28,12 +28,13 @@ ReactESP app;
 #define PIN_DOWN 14
 #define PIN_PULSE 17
 #define PIN_PULSE_FREQUENCY 20
+#define SIGNALK_RELAY_CHECK_FREQUENCY 50
 
 
 void setupRotationSensor();
 void setupRelayOutputs();
 
-const String WIFI_SSID = "SchNetAll";
+const String WIFI_SSID = "rabbitAll";
 const String WIFI_PASSWORD = "xx";
 const String SIGNALK_HOSTNAME = "AnchorMate";
 
@@ -99,7 +100,7 @@ public:
 void setupRelayOutputs()
 {
   const char *sk_path = "vessels.self.anchor.control";
-  auto *listener = new StringSKListener(sk_path);
+  auto *listener = new StringSKListener(sk_path, SIGNALK_RELAY_CHECK_FREQUENCY);
   auto *pathHandler = new SKPathHandler();
   listener->connect_to(pathHandler);
 }
@@ -109,14 +110,19 @@ void setupRotationSensor()
 
   const uint8_t kDigitalInput2Pin = PIN_PULSE;
   const unsigned int kDigitalInput2Interval = PIN_PULSE_FREQUENCY;
-
+  std::cout << "####1" << std::endl;
   pinMode(kDigitalInput2Pin, INPUT_PULLUP);
+  std::cout << "####2" << std::endl;
+
+  sleep(5);
+  std::cout << "####3" << std::endl;
 
   SKOutputInt *skRotationsOut = new SKOutputInt(
       "sensors.windlass.rotations",  // Signal K path
       "/sensors/windlass/rotations", // configuration path
       new SKMetadata("",             // No units for boolean values
                      "Rotation Count"));
+  std::cout << "####4" << std::endl;
 
   int *x = new int(0);
   (*skRotationsOut).set_input(*x);
