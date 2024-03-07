@@ -32,10 +32,17 @@ ReactESP app;
 #define SIGNALK_HEARTBEAT_CHECK_FREQUENCY 100
 #define SIGNALK_HEARTBEAT_CHECK_THRESHOLD 750
 
+const char *SK_PATH_HEARTBEAT = "vessels.self.anchor.control.heartbeat";
+const char *SK_PATH_CONTROL = "vessels.self.anchor.control";
+const char *SK_PATH_CONTROL_UP = "UP";
+const char *SK_PATH_CONTROL_DOWN = "DOWN";
+const char *SK_PATH_ROTATIONS = "sensors.windlass.rotations";
+const char *SK_PATH_ROTATIONS_LABEL = "Windlass Rotations";
+
 void setupRotationSensor();
 void setupRelayOutputs();
 void setupHeartbeatListener();
-void TaskFunction(void *pvParameters);
+void HeartBeatTaskFunction(void *pvParameters);
 
 const String WIFI_SSID = "Jumobile";
 const String WIFI_PASSWORD = "xx";
@@ -75,14 +82,13 @@ void setup()
   // Configuration is done, lets start the readings of the sensors!
   sensesp_app->start();
 
-  // Create a task that will be executed in the TaskFunction, with priority 1 and running on core 0
   xTaskCreate(
-      TaskFunction, /* Task function */
-      "TaskName",   /* Name of the task */
-      10000,        /* Stack size in words */
-      NULL,         /* Task input parameter */
-      1,            /* Priority of the task */
-      NULL          /* Task handle */
+      HeartBeatTaskFunction,           /* Task function */
+      "HeartbeatMonitorTask", /* Name of the task */
+      10000,                  /* Stack size in words */
+      NULL,                   /* Task input parameter */
+      1,                      /* Priority of the task */
+      NULL                    /* Task handle */
   );
 }
 
@@ -94,14 +100,14 @@ public:
     pinMode(PIN_UP, OUTPUT);
     pinMode(PIN_DOWN, OUTPUT);
 
-    if (value == "UP")
+    if (value == SK_PATH_CONTROL_UP)
     {
       std::cout << "UP" << std::endl;
       if (heartbeat)
         digitalWrite(PIN_UP, HIGH);
       digitalWrite(PIN_DOWN, LOW);
     }
-    else if (value == "DOWN")
+    else if (value == SK_PATH_CONTROL_DOWN)
     {
       std::cout << "DOWN" << std::endl;
       digitalWrite(PIN_UP, LOW);
@@ -132,16 +138,14 @@ public:
 
 void setupHeartbeatListener()
 {
-  const char *sk_path = "vessels.self.anchor.control.heartbeat";
-  auto *listener = new StringSKListener(sk_path, SIGNALK_HEARTBEAT_CHECK_FREQUENCY);
+  auto *listener = new StringSKListener(SK_PATH_HEARTBEAT, SIGNALK_HEARTBEAT_CHECK_FREQUENCY);
   auto *pathHandler = new SKPathHandlerHeartbeat();
   listener->connect_to(pathHandler);
 }
 
 void setupRelayOutputs()
 {
-  const char *sk_path = "vessels.self.anchor.control";
-  auto *listener = new StringSKListener(sk_path, SIGNALK_RELAY_CHECK_FREQUENCY);
+  auto *listener = new StringSKListener(SK_PATH_CONTROL, SIGNALK_RELAY_CHECK_FREQUENCY);
   auto *pathHandler = new SKPathHandler();
   listener->connect_to(pathHandler);
 }
@@ -155,10 +159,9 @@ void setupRotationSensor()
   pinMode(kDigitalInput2Pin, INPUT_PULLUP);
 
   SKOutputInt *skRotationsOut = new SKOutputInt(
-      "sensors.windlass.rotations",  // Signal K path
-      "/sensors/windlass/rotations", // configuration path
-      new SKMetadata("",             // No units for boolean values
-                     "Rotation Count"));
+      SK_PATH_ROTATIONS, // Signal K path
+      new SKMetadata("",            // No units for boolean values
+                     SK_PATH_ROTATIONS_LABEL));
 
   int *x = new int(0);
   (*skRotationsOut).set_input(*x);
@@ -181,13 +184,10 @@ void setupRotationSensor()
       });
 }
 
-void TaskFunction(void *pvParameters)
+void HeartBeatTaskFunction(void *pvParameters)
 {
-  // This is the loop replacement running in a separate thread
   for (;;)
-  { // infinite loop
-    // Serial.println("Task running on core ");
-    // Serial.println(currentMillis);
+  { 
     if (millis() - currentMillis > SIGNALK_HEARTBEAT_CHECK_THRESHOLD)
     {
       std::cout << "NO HEARTBEAT -> OFF" << std::endl;
@@ -201,7 +201,7 @@ void TaskFunction(void *pvParameters)
         std::cout << "HEARTBEAT -> ON" << std::endl;
       heartbeat = true;
     }
-    delay(SIGNALK_HEARTBEAT_CHECK_FREQUENCY); 
+    delay(SIGNALK_HEARTBEAT_CHECK_FREQUENCY);
   }
 }
 
