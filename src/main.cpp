@@ -29,14 +29,20 @@ ReactESP app;
 #define PIN_PULSE 17
 #define PIN_PULSE_FREQUENCY 20
 #define SIGNALK_RELAY_CHECK_FREQUENCY 50
-
+#define SIGNALK_HEARTBEAT_CHECK_FREQUENCY 100
+#define SIGNALK_HEARTBEAT_CHECK_THRESHOLD 750
 
 void setupRotationSensor();
 void setupRelayOutputs();
+void setupHeartbeatListener();
+void TaskFunction(void *pvParameters);
 
-const String WIFI_SSID = "rabbitAll";
+const String WIFI_SSID = "Jumobile";
 const String WIFI_PASSWORD = "xx";
 const String SIGNALK_HOSTNAME = "AnchorMate";
+
+volatile unsigned long currentMillis;
+volatile bool heartbeat = false;
 
 void setup()
 {
@@ -61,11 +67,23 @@ void setup()
   sensesp_app = builder.get_app();
 
   // set up sensors
+  sleep(5);
+  setupHeartbeatListener();
   setupRotationSensor();
   setupRelayOutputs();
 
   // Configuration is done, lets start the readings of the sensors!
   sensesp_app->start();
+
+  // Create a task that will be executed in the TaskFunction, with priority 1 and running on core 0
+  xTaskCreate(
+      TaskFunction, /* Task function */
+      "TaskName",   /* Name of the task */
+      10000,        /* Stack size in words */
+      NULL,         /* Task input parameter */
+      1,            /* Priority of the task */
+      NULL          /* Task handle */
+  );
 }
 
 class SKPathHandler : public ValueConsumer<String>
@@ -79,14 +97,16 @@ public:
     if (value == "UP")
     {
       std::cout << "UP" << std::endl;
-      digitalWrite(PIN_UP, HIGH);
+      if (heartbeat)
+        digitalWrite(PIN_UP, HIGH);
       digitalWrite(PIN_DOWN, LOW);
     }
     else if (value == "DOWN")
     {
       std::cout << "DOWN" << std::endl;
       digitalWrite(PIN_UP, LOW);
-      digitalWrite(PIN_DOWN, HIGH);
+      if (heartbeat)
+        digitalWrite(PIN_DOWN, HIGH);
     }
     else
     {
@@ -96,6 +116,27 @@ public:
     }
   }
 };
+
+class SKPathHandlerHeartbeat : public ValueConsumer<String>
+{
+public:
+  void set_input(String value, uint8_t input_channel = 0) override
+  {
+    // std::cout << ".. Received Heartbeat" << std::endl;
+    Serial.print(".");
+    // std::cout << value << std::endl;
+    // std::cout << millis() << std::endl;
+    currentMillis = millis();
+  }
+};
+
+void setupHeartbeatListener()
+{
+  const char *sk_path = "vessels.self.anchor.control.heartbeat";
+  auto *listener = new StringSKListener(sk_path, SIGNALK_HEARTBEAT_CHECK_FREQUENCY);
+  auto *pathHandler = new SKPathHandlerHeartbeat();
+  listener->connect_to(pathHandler);
+}
 
 void setupRelayOutputs()
 {
@@ -110,19 +151,14 @@ void setupRotationSensor()
 
   const uint8_t kDigitalInput2Pin = PIN_PULSE;
   const unsigned int kDigitalInput2Interval = PIN_PULSE_FREQUENCY;
-  std::cout << "####1" << std::endl;
-  pinMode(kDigitalInput2Pin, INPUT_PULLUP);
-  std::cout << "####2" << std::endl;
 
-  sleep(5);
-  std::cout << "####3" << std::endl;
+  pinMode(kDigitalInput2Pin, INPUT_PULLUP);
 
   SKOutputInt *skRotationsOut = new SKOutputInt(
       "sensors.windlass.rotations",  // Signal K path
       "/sensors/windlass/rotations", // configuration path
       new SKMetadata("",             // No units for boolean values
                      "Rotation Count"));
-  std::cout << "####4" << std::endl;
 
   int *x = new int(0);
   (*skRotationsOut).set_input(*x);
@@ -143,6 +179,30 @@ void setupRotationSensor()
         delete newState;
         return *x;
       });
+}
+
+void TaskFunction(void *pvParameters)
+{
+  // This is the loop replacement running in a separate thread
+  for (;;)
+  { // infinite loop
+    // Serial.println("Task running on core ");
+    // Serial.println(currentMillis);
+    if (millis() - currentMillis > SIGNALK_HEARTBEAT_CHECK_THRESHOLD)
+    {
+      std::cout << "NO HEARTBEAT -> OFF" << std::endl;
+      digitalWrite(PIN_UP, LOW);
+      digitalWrite(PIN_DOWN, LOW);
+      heartbeat = false;
+    }
+    else
+    {
+      if (!heartbeat)
+        std::cout << "HEARTBEAT -> ON" << std::endl;
+      heartbeat = true;
+    }
+    delay(SIGNALK_HEARTBEAT_CHECK_FREQUENCY); 
+  }
 }
 
 // main program loop
