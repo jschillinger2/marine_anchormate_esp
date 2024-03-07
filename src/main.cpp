@@ -140,6 +140,7 @@ void setupRotationSensor()
           (*skRotationsOut).set_input(*x);
         }
         *prevState = *newState;
+        delete newState;
         return *x;
       });
 }
