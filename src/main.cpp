@@ -62,14 +62,24 @@ void setup()
 
   currentMillis = 0;
 
+  // reset flash and wifi
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+  delay(100);
+  esp_err_t ret = nvs_flash_init();
+  ESP_ERROR_CHECK(nvs_flash_erase());
+  ret = nvs_flash_init();
+  ESP_ERROR_CHECK(ret);
+  delay(1000);
+
   // init pins
   pinMode(PIN_UP, OUTPUT);
   pinMode(PIN_DOWN, OUTPUT);
 
   // init wifi
-  WiFi.setSleep(false);
+  //WiFi.setSleep(false);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  Serial.println("");
+  Serial.println("Attempting to connect to Wifi");
   while (WiFi.status() != WL_CONNECTED)
   {
     delay(5000);
