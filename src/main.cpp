@@ -7,6 +7,7 @@
 #include "sensesp/transforms/linear.h"
 #include "sensesp_app_builder.h"
 #include "Arduino.h"
+#include <WiFi.h>
 
 #include "sensesp_app.h"
 #include "sensesp_app_builder.h"
@@ -45,6 +46,7 @@ void setupRotationSensor();
 void setupRelayOutputs();
 void setupHeartbeatListener();
 void HeartBeatTaskFunction(void *pvParameters);
+void maintainWifiConnection();
 
 const String WIFI_SSID = "xx";
 const String WIFI_PASSWORD = "xx";
@@ -227,8 +229,32 @@ void HeartBeatTaskFunction(void *pvParameters)
   }
 }
 
+void maintainWifiConnection()
+{
+  if (WiFi.status() != WL_CONNECTED)
+  {
+    Serial.println("WiFi disconnected, attempting reconnect...");
+    WiFi.disconnect();
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    unsigned long startAttemptTime = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < 10000)
+    {
+      delay(500);
+      Serial.print(".");
+    }
+    if (WiFi.status() == WL_CONNECTED)
+    {
+      Serial.println("Reconnected to WiFi");
+    }
+    else
+    {
+      Serial.println("Reconnect failed");
+    }
+  }
+}
 // main program loop
 void loop()
 {
+  maintainWifiConnection();
   app.tick();
 }
