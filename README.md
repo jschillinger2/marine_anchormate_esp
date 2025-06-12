@@ -26,7 +26,7 @@ This is the hardware unit to work with the project <a href="https://github.com/j
    ```bash
    cd marine_anchormate
    ```
-2. Update the contstants in the cpp file, eg pins and wifi credentials.  
+2. Update the contstants in `app_config.h`, e.g. pins and WiFi credentials.
 3. Upload `main.cpp` to your FireBeetle board using your preferred IDE or the Arduino CLI.
 
 ## Usage

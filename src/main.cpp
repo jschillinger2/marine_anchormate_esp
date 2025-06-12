@@ -22,33 +22,17 @@
 
 #include "sensesp_minimal_app_builder.h"
 
+#include "app_config.h"
+
 using namespace sensesp;
 
 ReactESP app;
-
-#define PIN_UP 14
-#define PIN_DOWN 13
-#define PIN_PULSE 17
-#define PIN_PULSE_FREQUENCY 20
-#define SIGNALK_RELAY_CHECK_FREQUENCY 50
-#define SIGNALK_HEARTBEAT_CHECK_FREQUENCY 300
-#define SIGNALK_HEARTBEAT_CHECK_THRESHOLD 1500
-
-const char *SK_PATH_HEARTBEAT = "vessels.self.anchor.control.heartbeat";
-const char *SK_PATH_CONTROL = "vessels.self.anchor.control";
-const char *SK_PATH_CONTROL_UP = "UP";
-const char *SK_PATH_CONTROL_DOWN = "DOWN";
-const char *SK_PATH_ROTATIONS = "sensors.windlass.rotations";
-const char *SK_PATH_ROTATIONS_LABEL = "Windlass Rotations";
 
 void setupRotationSensor();
 void setupRelayOutputs();
 void setupHeartbeatListener();
 void HeartBeatTaskFunction(void *pvParameters);
 
-const String WIFI_SSID = "xx";
-const String WIFI_PASSWORD = "xx";
-const String SIGNALK_HOSTNAME = "AnchorMate";
 
 volatile unsigned long currentMillis;
 volatile bool heartbeat = false;
