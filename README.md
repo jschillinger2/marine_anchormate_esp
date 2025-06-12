@@ -9,6 +9,7 @@ This is the hardware unit to work with the project <a href="https://github.com/j
 - **Signal K Listener**: Integrates with the Signal K network to receive commands and data.
 - **Windlass Control**: Manipulates pins on a FireBeetle board to control relays for the anchor windlass, enabling automatic operation.
 - **Rotation Count Monitoring**: Listens to a rotation sensor attached to the windlass, counting rotations and feeding this information back to Signal K for accurate monitoring.
+- **Controller Heartbeat**: Sends a heartbeat value to Signal K every 2 seconds so other applications can confirm the controller is online.
 
 ## Requirements
 - FireBeetle Board (ESP32)
