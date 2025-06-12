@@ -33,6 +33,7 @@ ReactESP app;
 #define SIGNALK_RELAY_CHECK_FREQUENCY 50
 #define SIGNALK_HEARTBEAT_CHECK_FREQUENCY 300
 #define SIGNALK_HEARTBEAT_CHECK_THRESHOLD 1500
+#define SIGNALK_CONTROLLER_HEARTBEAT_FREQUENCY 2000
 
 const char *SK_PATH_HEARTBEAT = "vessels.self.anchor.control.heartbeat";
 const char *SK_PATH_CONTROL = "vessels.self.anchor.control";
@@ -40,10 +41,13 @@ const char *SK_PATH_CONTROL_UP = "UP";
 const char *SK_PATH_CONTROL_DOWN = "DOWN";
 const char *SK_PATH_ROTATIONS = "sensors.windlass.rotations";
 const char *SK_PATH_ROTATIONS_LABEL = "Windlass Rotations";
+const char *SK_PATH_CONTROLLER_HEARTBEAT = "vessels.self.anchor.controller.heartbeat";
+const char *SK_PATH_CONTROLLER_HEARTBEAT_LABEL = "Controller Heartbeat";
 
 void setupRotationSensor();
 void setupRelayOutputs();
 void setupHeartbeatListener();
+void setupControllerHeartbeat();
 void HeartBeatTaskFunction(void *pvParameters);
 
 const String WIFI_SSID = "xx";
@@ -96,6 +100,7 @@ void setup()
   setupRotationSensor();
   setupRelayOutputs();
   setupHeartbeatListener();
+  setupControllerHeartbeat();
   sleep(2);
 
   // Configuration is done, lets start the readings of the sensors!
@@ -161,6 +166,20 @@ void setupRelayOutputs()
   auto *listener = new StringSKListener(SK_PATH_CONTROL, SIGNALK_RELAY_CHECK_FREQUENCY);
   auto *pathHandler = new SKPathHandler();
   listener->connect_to(pathHandler);
+}
+
+void setupControllerHeartbeat()
+{
+  static int hb_value = 0;
+  static SKOutputInt *skHeartbeatOut = new SKOutputInt(
+      SK_PATH_CONTROLLER_HEARTBEAT,
+      new SKMetadata("",
+                     SK_PATH_CONTROLLER_HEARTBEAT_LABEL));
+
+  app.onRepeat(SIGNALK_CONTROLLER_HEARTBEAT_FREQUENCY, [skHeartbeatOut, &hb_value]() {
+    hb_value++;
+    skHeartbeatOut->set_input(hb_value);
+  });
 }
 
 void setupRotationSensor()
